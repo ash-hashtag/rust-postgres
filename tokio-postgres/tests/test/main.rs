@@ -902,6 +902,38 @@ async fn query_one() {
 }
 
 #[tokio::test]
+async fn query_typed_one() {
+    let client = connect("user=postgres").await;
+
+    client
+        .batch_execute(
+            "
+                CREATE TEMPORARY TABLE foo (
+                    name TEXT
+                );
+                INSERT INTO foo (name) VALUES ('alice'), ('bob'), ('carol');
+            ",
+        )
+        .await
+        .unwrap();
+
+    client
+        .query_typed_one("SELECT * FROM foo WHERE name = 'dave'", &[])
+        .await
+        .err()
+        .unwrap();
+    client
+        .query_typed_one("SELECT * FROM foo WHERE name = 'alice'", &[])
+        .await
+        .unwrap();
+    client
+        .query_typed_one("SELECT * FROM foo", &[])
+        .await
+        .err()
+        .unwrap();
+}
+
+#[tokio::test]
 async fn query_opt() {
     let client = connect("user=postgres").await;
 
@@ -929,6 +961,38 @@ async fn query_opt() {
         .unwrap();
     client
         .query_one("SELECT * FROM foo", &[])
+        .await
+        .err()
+        .unwrap();
+}
+#[tokio::test]
+async fn query_typed_opt() {
+    let client = connect("user=postgres").await;
+
+    client
+        .batch_execute(
+            "
+                CREATE TEMPORARY TABLE foo (
+                    name TEXT
+                );
+                INSERT INTO foo (name) VALUES ('alice'), ('bob'), ('carol');
+            ",
+        )
+        .await
+        .unwrap();
+
+    assert!(client
+        .query_typed_opt("SELECT * FROM foo WHERE name = 'dave'", &[])
+        .await
+        .unwrap()
+        .is_none());
+    client
+        .query_typed_opt("SELECT * FROM foo WHERE name = 'alice'", &[])
+        .await
+        .unwrap()
+        .unwrap();
+    client
+        .query_typed_one("SELECT * FROM foo", &[])
         .await
         .err()
         .unwrap();
