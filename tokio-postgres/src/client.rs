@@ -19,7 +19,7 @@ use crate::{
 use bytes::{Buf, BytesMut};
 use fallible_iterator::FallibleIterator;
 use futures_channel::mpsc;
-use futures_util::{StreamExt, TryStreamExt};
+use futures_util::{pin_mut, StreamExt, TryStreamExt};
 use parking_lot::Mutex;
 use postgres_protocol::message::backend::Message;
 use postgres_protocol::message::frontend;
