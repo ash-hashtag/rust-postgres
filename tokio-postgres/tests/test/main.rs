@@ -905,14 +905,28 @@ async fn query_typed_one() {
         .batch_execute(
             "
                 CREATE TEMPORARY TABLE foo (
-                    name TEXT
+                    name TEXT,
+                    age INT
                 );
-                INSERT INTO foo (name) VALUES ('alice'), ('bob'), ('carol');
+                INSERT INTO foo (name, age) VALUES ('alice', 20), ('bob', 30), ('carol', 40);
             ",
         )
         .await
         .unwrap();
 
+    // should return exactly one row
+    let row = client
+        .query_typed_one(
+            "SELECT name, age FROM foo WHERE name = $1 AND age = $2",
+            &[(&"alice", Type::TEXT), (&20i32, Type::INT4)],
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(row.get::<_, &str>(0), "alice");
+    assert_eq!(row.get::<_, i32>(1), 20);
+
+    // dave doesn't exist, hence should return no row
     client
         .query_typed_one(
             "SELECT * FROM foo WHERE name = $1",
@@ -921,15 +935,20 @@ async fn query_typed_one() {
         .await
         .err()
         .unwrap();
-    client
-        .query_typed_one(
-            "SELECT * FROM foo WHERE name = $1",
-            &[(&"alice", Type::TEXT)],
-        )
-        .await
-        .unwrap();
+
+    // should return error if the number of rows returned is not exactly one or zero
     client
         .query_typed_one("SELECT * FROM foo", &[])
+        .await
+        .err()
+        .unwrap();
+
+    // should be none because no row is returned
+    client
+        .query_typed_one(
+            "INSERT INTO foo (name, age) VALUES ($1, $2)",
+            &[(&"dave", Type::TEXT), (&45i32, Type::INT4)],
+        )
         .await
         .err()
         .unwrap();
@@ -967,6 +986,7 @@ async fn query_opt() {
         .err()
         .unwrap();
 }
+
 #[tokio::test]
 async fn query_typed_opt() {
     let client = connect("user=postgres").await;
@@ -975,14 +995,29 @@ async fn query_typed_opt() {
         .batch_execute(
             "
                 CREATE TEMPORARY TABLE foo (
-                    name TEXT
+                    name TEXT,
+                    age INT
                 );
-                INSERT INTO foo (name) VALUES ('alice'), ('bob'), ('carol');
+                INSERT INTO foo (name, age) VALUES ('alice', 20), ('bob', 30), ('carol', 40);
             ",
         )
         .await
         .unwrap();
 
+    // should return exactly one row
+    let row = client
+        .query_typed_opt(
+            "SELECT name, age FROM foo WHERE name = $1 AND age = $2",
+            &[(&"alice", Type::TEXT), (&20i32, Type::INT4)],
+        )
+        .await
+        .unwrap()
+        .unwrap();
+
+    assert_eq!(row.get::<_, &str>(0), "alice");
+    assert_eq!(row.get::<_, i32>(1), 20);
+
+    // dave doesn't exist, hence should return no row
     assert!(client
         .query_typed_opt(
             "SELECT * FROM foo WHERE name = $1",
@@ -991,19 +1026,23 @@ async fn query_typed_opt() {
         .await
         .unwrap()
         .is_none());
+
+    // should return error if the number of rows returned is not exactly one or zero
     client
-        .query_typed_opt(
-            "SELECT * FROM foo WHERE name = $1",
-            &[(&"alice", Type::TEXT)],
-        )
-        .await
-        .unwrap()
-        .unwrap();
-    client
-        .query_typed_one("SELECT * FROM foo", &[])
+        .query_typed_opt("SELECT * FROM foo", &[])
         .await
         .err()
         .unwrap();
+
+    // should be none because no row is returned
+    assert!(client
+        .query_typed_opt(
+            "INSERT INTO foo (name, age) VALUES ($1, $2)",
+            &[(&"dave", Type::TEXT), (&45i32, Type::INT4)],
+        )
+        .await
+        .unwrap()
+        .is_none());
 }
 
 #[tokio::test]
