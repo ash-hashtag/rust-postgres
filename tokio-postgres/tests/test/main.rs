@@ -936,7 +936,7 @@ async fn query_typed_one() {
         .err()
         .unwrap();
 
-    // should return error if the number of rows returned is not exactly one 
+    // should return error if the number of rows returned is not exactly one
     client
         .query_typed_one("SELECT * FROM foo", &[])
         .await
