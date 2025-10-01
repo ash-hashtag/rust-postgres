@@ -517,6 +517,29 @@ impl Client {
         self.execute_raw(statement, slice_iter(params)).await
     }
 
+    /// Executes a statement, returning the number of rows modified.
+    ///
+    /// A statement may contain parameters, specified by `$n`, where `n` is the index of the parameter of the list
+    /// provided, 1-indexed.
+    ///
+    /// The `statement` argument can either be a `Statement`, or a raw query string. If the same statement will be
+    /// repeatedly executed (perhaps with different query parameters), consider preparing the statement up front
+    /// with the `prepare` method.
+    ///
+    /// If the statement does not modify any rows (e.g. `SELECT`), 0 is returned.
+    pub async fn execute_typed(
+        &self,
+        statement: &str,
+        params: &[(&(dyn ToSql + Sync), Type)],
+    ) -> Result<u64, Error> {
+        query::execute_typed(
+            &self.inner,
+            statement,
+            params.iter().map(|(v, t)| (*v, t.clone())),
+        )
+        .await
+    }
+
     /// The maximally flexible version of [`execute`].
     ///
     /// A statement may contain parameters, specified by `$n`, where `n` is the index of the parameter of the list
